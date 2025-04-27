@@ -1,5 +1,7 @@
 'use server';
 
+import { signIn } from '@/auth';
+import { AuthError } from 'next-auth';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import postgres from 'postgres';
@@ -30,6 +32,28 @@ export type State = {
 };
 
 const CreateInvoice = FormSchema.omit({ id: true, date: true });
+
+export async function authenticate(
+    prevState: string | undefined,
+    formData: FormData,
+) {
+    try {
+        console.log('FormData:', formData);
+        await signIn('credentials', formData);
+    } catch (error) {
+        if (error instanceof AuthError) {
+            console.log(error);
+            // @ts-expect-error - idk why this is not working
+            switch (error.type) {
+                case 'CredentialsSignin':
+                    return 'Invalid credentials.';
+                default:
+                    return 'Something went wrong.';
+            }
+        }
+        throw error;
+    }
+}
 
 export async function createInvoice(prevState: State, formData: FormData) {
     const validatedFields = CreateInvoice.safeParse({
